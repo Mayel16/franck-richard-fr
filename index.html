@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Franck Richard- Portfolio</title>
+    <link rel="icon" href="./logo.png" type="image/png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+      /* Importation de la police Futura */
+      @import url('https://fonts.googleapis.com/css2?family=Futura&display=swap');
+      
+      html, body {
+        margin: 0;
+        padding: 0;
+        /* Désactivation du défilement horizontal */
+        overflow-x: hidden;
+        background: #0e0e0e;
+        color: white;
+        font-family: "Futura", "Segoe UI", sans-serif;
+      }
+
+      /* Wrapper du PDF pour le défilement horizontal */
+      #pdf-wrapper {
+        display: flex;
+        /* Le défilement horizontal est géré ici, mais la barre est cachée */
+        overflow-x: scroll; 
+        overflow-y: hidden;
+        height: 100vh;
+        scroll-snap-type: x mandatory;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      #pdf-wrapper::-webkit-scrollbar {
+        display: none;
+      }
+
+      /* Conteneur de chaque page */
+      .pdf-page {
+        flex: none;
+        scroll-snap-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        /* Assure que la page prend exactement la largeur de la vue */
+        width: 100vw; 
+        height: 100vh;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+
+      canvas {
+        max-width: 100%;
+        max-height: 100%;
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        background: white;
+      }
+
+      /* Styles de la pagination */
+      #pagination {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 8px 20px;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        z-index: 10;
+        user-select: none;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: background 0.3s ease;
+      }
+      
+      #pagination:hover {
+        background: rgba(0, 0, 0, 0.6);
+      }
+
+      .nav-arrow {
+        font-size: 26px;
+        cursor: pointer;
+        color: white;
+        opacity: 0.8;
+        transition: opacity 0.3s ease, transform 0.2s ease;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .nav-arrow:hover {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+
+      #page-info {
+        font-size: 16px;
+        font-weight: 500;
+        letter-spacing: 1px;
+        line-height: 1;
+        padding-top: 2px;
+      }
+
+      .nav-arrow.disabled {
+        cursor: default;
+        opacity: 0.2;
+        transform: none;
+      }
+      
+      /* Version ordinateur (taille plus petite) */
+      @media (min-width: 768px) {
+        /*
+        #pagination {
+          bottom: 30px;
+          gap: 20px;
+          padding: 8px 20px;
+        }*/
+        #pagination {
+          left: 84.5%;
+          gap: 12px;
+          padding: 6px 15px;
+        }
+
+        .nav-arrow {
+          font-size: 18px;
+        }
+
+        #page-info {
+          font-size: 13px;
+        }
+      }
+
+      @media (max-width: 767px) {
+        #pagination {
+          left: 50%;
+          gap: 10px;
+          padding: 4px 12px;
+        }
+
+        .nav-arrow {
+          font-size: 12px;
+        }
+
+        #page-info {
+          font-size: 10px;
+        }
+      }
+
+    </style>
+  </head>
+  <body>
+    <div id="pdf-wrapper"></div>
+    <div id="pagination">
+      <span id="prev-page" class="nav-arrow disabled">‹</span>
+      <span id="page-info">1 / ?</span>
+      <span id="next-page" class="nav-arrow">›</span>
+    </div>
+
+    <script>
+      const url = './portfolio_fr.pdf';
+      const wrapper = document.getElementById('pdf-wrapper');
+      const prevBtn = document.getElementById('prev-page');
+      const nextBtn = document.getElementById('next-page');
+      const pageInfo = document.getElementById('page-info');
+
+      let currentPage = 1;
+      let totalPages = 0;
+
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+      pdfjsLib.getDocument(url).promise.then(pdf => {
+        totalPages = pdf.numPages;
+        pageInfo.textContent = `1 / ${totalPages}`;
+
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+          pdf.getPage(pageNum).then(page => {
+            const scale = 4;
+            const viewport = page.getViewport({ scale });
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            page.render({ canvasContext: context, viewport });
+
+            const pageContainer = document.createElement('div');
+            pageContainer.className = 'pdf-page';
+            wrapper.appendChild(pageContainer);
+            
+            // Ajoute le canvas au conteneur de page après le rendu
+            pageContainer.appendChild(canvas);
+          });
+        }
+        
+        prevBtn.addEventListener('click', () => {
+          if (currentPage > 1) {
+            currentPage--;
+            scrollToPage(currentPage);
+          }
+        });
+
+        nextBtn.addEventListener('click', () => {
+          if (currentPage < totalPages) {
+            currentPage++;
+            scrollToPage(currentPage);
+          }
+        });
+
+        wrapper.addEventListener('scroll', () => {
+          // Gère le cas où l'utilisateur scrolle un peu pour que la page soit bien centrée
+          const pageIndex = Math.round(wrapper.scrollLeft / window.innerWidth);
+          currentPage = pageIndex + 1;
+          updatePagination();
+        });
+
+        function scrollToPage(pageNum) {
+          const pageElement = wrapper.querySelector(`.pdf-page:nth-child(${pageNum})`);
+          if (pageElement) {
+            wrapper.scrollLeft = pageElement.offsetLeft;
+          }
+        }
+
+        function updatePagination() {
+          pageInfo.textContent = `${currentPage} / ${totalPages}`;
+          prevBtn.classList.toggle('disabled', currentPage === 1);
+          nextBtn.classList.toggle('disabled', currentPage === totalPages);
+        }
+      });
+    </script>
+  </body>
+</html>
